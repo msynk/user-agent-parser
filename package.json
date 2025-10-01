@@ -1,0 +1,28 @@
+{
+    "name": "uap",
+    "version": "0.0.1",
+    "description": "Simple device info extractor from user agent strings.",
+    "main": "dist/index.cjs",
+    "module": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "test": "vitest",
+        "lint": "eslint ."
+    },
+    "keywords": [
+        "user-agent",
+        "device-detection",
+        "ua-parser"
+    ],
+    "author": "Your Name",
+    "license": "MIT",
+    "devDependencies": {
+        "typescript": "^5.6.0",
+        "vitest": "^2.0.0",
+        "eslint": "^9.0.0"
+    }
+}
