@@ -10,11 +10,18 @@ export interface UserAgentDataBrand {
 }
 
 export interface UserAgentInfo {
-    browser: { name: string; version: string; };
-    os: { name: string; version: string; };
-    device: { type: "Mobile" | "Desktop" };
+    browser: NameVersion;
+    os: NameVersion;
+    deviceType: DeviceType;
     engine: string;
     userAgent: string;
     platform: string;
     source: string;
 }
+
+export interface NameVersion {
+    name: string;
+    version: string | null;
+}
+
+export type DeviceType = 'Mobile' | 'Desktop';

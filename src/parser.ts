@@ -1,57 +1,97 @@
-import { UserAgentInfo, UserAgentData, UserAgentDataBrand } from "./types";
+import { UserAgentInfo, UserAgentData, UserAgentDataBrand, DeviceType, NameVersion } from './types';
 
-export function extract() {
-    const nav = typeof navigator !== "undefined" ? navigator : {} as Navigator;
-    const ua = (nav.userAgent || "").trim();
-    const uad = nav.userAgentData || null; // Chromium-only (not on iOS Safari)
+export function parse() {
+    const nav = typeof navigator !== 'undefined' ? navigator : {} as Navigator;
+    const ua = (nav.userAgent || '').trim();
+    const uad = nav.userAgentData || null; // chromium only (not on iOS Safari)
     const brave = !!(nav as any).brave;
 
-    // ---- 1) Try Client Hints (simple, robust on Chromium) ----
-    const clientHints = getFromUserAgentData(uad);
-    if (clientHints) {
-        // If we can detect Brave via API, prefer that label.
-        if (brave && clientHints.browser.name === "Chrome") {
-            clientHints.browser.name = "Brave";
+    // 1) userAgentData first (on chromium browsers)
+    const fromUAD = getFromUserAgentData(uad);
+    if (fromUAD) {
+        // prefer Brave API
+        if (brave && fromUAD.browser.name === 'Chrome') {
+            fromUAD.browser.name = 'Brave';
         }
-        clientHints.source = "clientHints";
-        return clientHints;
+        return fromUAD;
     }
 
-    // ---- 2) Fallback: compact UA parsing for common devices ----
+    // 2) fallback to userAgent
     const result = getFromUserAgent(ua, nav);
-    if (brave && result.browser.name === "Chrome") result.browser.name = "Brave";
-    result.source = "userAgent";
+    if (brave && result.browser.name === 'Chrome') {
+        result.browser.name = 'Brave';
+    }
     return result;
 }
 
-// ---------- helpers ----------
-function getFromUserAgentData(uaData: UserAgentData): UserAgentInfo | null {
-    if (!uaData) return null;
+// ============================== userAgentData ==============================
 
-    // Browser name/version from brands (low-entropy, but fine for majors)
-    let brand = pickBrand(uaData.brands || []);
-    const browserName = normalizeBrandName(brand?.brand || "");
-    const browserVersion = brand?.version || null;
+function getFromUserAgentData(userAgentData: UserAgentData): UserAgentInfo | null {
+    if (!userAgentData) return null;
+
+    // browser name/version from brand (but fine for majors)
+    let brand = findBrand(userAgentData.brands || []);
+    const browser = { name: formatBrandName(brand?.brand || ''), version: brand?.version || null };
 
     // OS & device
-    const platform = uaData.platform || ""; // "Windows", "macOS", "Android", "Chrome OS", "Linux", "iOS"
-    const os = mapPlatformToOS(platform);
-    const deviceType = uaData.mobile ? "Mobile" : guessDesktopVsLaptop(os); // CH can’t tell tablet vs phone; ok for “conventional”
-    const engine = browserName === "Firefox"
-        ? "Gecko"
-        : browserName === "Safari"
-            ? "WebKit"
-            : "Blink"; // Chromium family default
+    const platform = userAgentData.platform || '';
+    const os = extractOsFromPlatform(platform);
+    const deviceType = userAgentData.mobile ? 'Mobile' : findDeviceTypeFromOs(os.name);
+    const engine = browser.name === 'Firefox'
+        ? 'Gecko'
+        : browser.name === 'Safari'
+            ? 'WebKit'
+            : 'Blink'; // Chromium family default
+    const userAgent = navigator.userAgent || '';
 
     return {
-        browser: { name: browserName, version: browserVersion },
-        os: { name: os.name, version: os.version },
-        device: { type: deviceType },
+        browser,
+        os,
+        deviceType,
         engine,
-        userAgent: (navigator.userAgent || ""),
-        platform: uaData.platform || "",
+        userAgent,
+        platform,
+        source: 'userAgentData'
     };
 }
+
+function findBrand(brands: UserAgentDataBrand[]): UserAgentDataBrand {
+    // Prefer recognizable brands over "Not A;Brand"
+    const preferred = ["Microsoft Edge", "Opera", "Google Chrome", "Chromium"];
+    for (const p of preferred) {
+        const hit = brands.find(b => (b.brand || '').toLowerCase() === p.toLowerCase());
+        if (hit) return hit;
+    }
+    // Fallback: first non-“Not” brand
+    return brands.find(b => !(b.brand || '').match(/not.*brand/i)) || brands[0] || null;
+}
+
+function formatBrandName(name: string): string {
+    if (/edge/i.test(name)) return "Edge";
+    if (/opera/i.test(name)) return "Opera";
+    if (/chrome|chromium/i.test(name)) return "Chrome";
+    return name || "Unknown";
+}
+
+function extractOsFromPlatform(platform: string): NameVersion {
+    switch ((platform || '').toLowerCase()) {
+        case "windows": return { name: "Windows", version: null };
+        case "macos": return { name: "macOS", version: null };
+        case "android": return { name: "Android", version: null };
+        case "ios": return { name: "iOS", version: null };
+        case "chrome os":
+        case "chromeos": return { name: "Chrome OS", version: null };
+        case "linux": return { name: "Linux", version: null };
+        default: return { name: platform || "Unknown", version: null };
+    }
+}
+
+function findDeviceTypeFromOs(name: string) {
+    // For human meaning, “Desktop” is fine for non-mobile platforms.
+    return /android|ios/i.test(name) ? "Mobile" : "Desktop";
+}
+
+// ============================== userAgent ==============================
 
 function getFromUserAgent(ua: string, nav: Navigator): UserAgentInfo {
     // --- OS (handles iPadOS 13+ masquerading as macOS) ---
@@ -129,44 +169,9 @@ function getFromUserAgent(ua: string, nav: Navigator): UserAgentInfo {
         device: { type: deviceType },
         engine,
         userAgent: ua,
-        platform: nav.platform || "",
+        platform: nav.platform || '',
+        source: 'userAgent'
     };
-}
-
-function pickBrand(brands: UserAgentDataBrand[]) {
-    // Prefer recognizable brands over "Not A;Brand"
-    const preferred = ["Microsoft Edge", "Opera", "Google Chrome", "Chromium"];
-    for (const p of preferred) {
-        const hit = brands.find(b => (b.brand || "").toLowerCase() === p.toLowerCase());
-        if (hit) return hit;
-    }
-    // Fallback: first non-“Not” brand
-    return brands.find(b => !(b.brand || "").match(/not.*brand/i)) || brands[0] || null;
-}
-
-function normalizeBrandName(name) {
-    if (/edge/i.test(name)) return "Edge";
-    if (/opera/i.test(name)) return "Opera";
-    if (/chrome|chromium/i.test(name)) return "Chrome";
-    return name || "Unknown";
-}
-
-function mapPlatformToOS(platform) {
-    switch ((platform || "").toLowerCase()) {
-        case "windows": return { name: "Windows", version: null };
-        case "macos": return { name: "macOS", version: null };
-        case "android": return { name: "Android", version: null };
-        case "ios": return { name: "iOS", version: null };
-        case "chrome os":
-        case "chromeos": return { name: "Chrome OS", version: null };
-        case "linux": return { name: "Linux", version: null };
-        default: return { name: platform || "Unknown", version: null };
-    }
-}
-
-function guessDesktopVsLaptop(os) {
-    // For human meaning, “Desktop” is fine for non-mobile platforms.
-    return /android|ios/i.test(os.name) ? "Mobile" : "Desktop";
 }
 
 function ntToWindows(nt) {
