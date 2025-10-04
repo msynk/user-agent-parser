@@ -1,14 +1,3 @@
-export interface UserAgentData {
-    brands: UserAgentDataBrand[];
-    mobile: boolean;
-    platform: string;
-}
-
-export interface UserAgentDataBrand {
-    brand: string;
-    version: string;
-}
-
 export interface UserAgentInfo {
     browser: NameVersion;
     os: NameVersion;
@@ -24,4 +13,15 @@ export interface NameVersion {
     version: string | null;
 }
 
-export type DeviceType = 'Mobile' | 'Desktop';
+export type DeviceType = 'Mobile' | 'Tablet' | 'Desktop';
+
+export interface UserAgentData {
+    brands: UserAgentDataBrand[];
+    mobile: boolean;
+    platform: string;
+}
+
+export interface UserAgentDataBrand {
+    brand: string;
+    version: string;
+}
