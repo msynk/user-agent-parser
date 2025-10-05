@@ -1,27 +1,29 @@
 import { NameVersion, UserAgentData, UserAgentDataBrand, UserAgentInfo } from './types';
 
-export function parse() {
+export function parse(userAgentString?: string): UserAgentInfo {
     const nav = typeof navigator !== 'undefined' ? navigator : {} as Navigator;
     const ua = (nav.userAgent || '').trim();
     const uad = nav.userAgentData || null; // chromium only (not on iOS Safari)
     const brave = !!(nav as any).brave;
 
-    // 1) userAgentData first (on chromium browsers)
-    const fromUAD = getFromUserAgentData(uad);
-    if (fromUAD) {
-        // prefer Brave API
-        if (brave && fromUAD.browser.name === 'Chrome') {
-            fromUAD.browser.name = 'Brave';
+    if (!userAgentString) {
+        // 1) userAgentData first (on chromium browsers)
+        const fromUAD = getFromUserAgentData(uad);
+        if (fromUAD) {
+            // prefer Brave API
+            if (brave && fromUAD.browser.name === 'Chrome') {
+                fromUAD.browser.name = 'Brave';
+            }
+            return fromUAD;
         }
-        return fromUAD;
     }
 
     // 2) fallback to userAgent
-    const result = getFromUserAgent(ua, nav);
-    if (brave && result.browser.name === 'Chrome') {
-        result.browser.name = 'Brave';
+    const fromUA = getFromUserAgent(userAgentString || ua, nav);
+    if (brave && fromUA.browser.name === 'Chrome') {
+        fromUA.browser.name = 'Brave';
     }
-    return result;
+    return fromUA;
 }
 
 // ============================== userAgentData ==============================
@@ -152,7 +154,7 @@ function getFromUserAgent(userAgent: string, nav: Navigator): UserAgentInfo {
         os.name = 'Linux';
     }
 
-    const isMobile = /\bMobi\b/i.test(userAgent) || /iPhone|iPod/.test(userAgent);
+    const isMobile = /\bMobile\b/i.test(userAgent) || /iPhone|iPod/.test(userAgent);
     const isTablet =
         /iPad/.test(userAgent) ||
         (/\bAndroid\b/i.test(userAgent) && !/\bMobile\b/i.test(userAgent)) ||

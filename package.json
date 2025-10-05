@@ -1,28 +1,37 @@
 {
     "name": "uap",
+    "type": "module",
     "version": "0.0.1",
-    "description": "Simple device info extractor from user agent strings.",
-    "main": "dist/index.cjs",
-    "module": "dist/index.js",
+    "description": "A small lib to extract actual device data from browser.",
+    "main": "dist/index.js",
     "types": "dist/index.d.ts",
-    "files": [
-        "dist"
-    ],
     "scripts": {
         "build": "tsc -p tsconfig.build.json",
         "test": "vitest",
         "lint": "eslint ."
     },
+    "devDependencies": {
+        "eslint": "^9.0.0",
+        "jsdom": "^27.0.0",
+        "typescript": "^5.6.0",
+        "vitest": "^2.0.0"
+    },
+    "files": [
+        "dist"
+    ],
     "keywords": [
         "user-agent",
         "device-detection",
         "ua-parser"
     ],
-    "author": "Your Name",
+    "author": "msynk",
     "license": "MIT",
-    "devDependencies": {
-        "typescript": "^5.6.0",
-        "vitest": "^2.0.0",
-        "eslint": "^9.0.0"
-    }
+  "homepage": "https://github.com/msynk/user-agent-parser",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/msynk/user-agent-parser.git"
+  },
+  "bugs": {
+    "url": "https://github.com/msynk/user-agent-parser/issues"
+  }
 }
